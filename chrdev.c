@@ -101,16 +101,19 @@ out:
 
 int write_user_data(struct data *data, const char __user *buf, size_t count)
 {
+	int tmp = 0;
 	if (data->wr_off - data->rd_off < 0) {
 		data->rd_off = data->wr_off;
 	}
 
 	count = count > data->size ? data->size : count; // to avoid problems with overflowing
 
-	if ((data->wr_off + count - data->rd_off + 1) > data->size)  
-		count = data->size - data->wr_off + data->rd_off - 1;
+	if ((data->wr_off + count - data->rd_off) > data->size)  
+		count = data->size - data->wr_off + data->rd_off;
 
-	if (copy_from_user(data->buf + (data->wr_off + 1 % data->size), buf, count))
+	count = (data->size - data->wr_off % data->size < count ) ? data->size - data->wr_off % data->size : count;
+	 
+	if (copy_from_user(data->buf + (data->wr_off % data->size), buf, count))
 		return -EFAULT;
 
 	data->wr_off += count;
@@ -122,6 +125,8 @@ int write_user_data(struct data *data, const char __user *buf, size_t count)
 ssize_t my_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos) 
 {
 	int written_smbl = write_user_data(data, buf, count);
+
+	printk(KERN_NOTICE "WRITTEN SMBL = %d", written_smbl);
 
 	*f_pos += written_smbl;
 
